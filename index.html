@@ -3,15 +3,108 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Website - logangj.com</title>
+    <title>LJ Shapes V1</title>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
-        h1 { color: #333; }
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: black;
+        }
+        svg {
+            width: 750px;
+            height: 750px;
+            user-select: none;
+        }
+        .letter {
+            cursor: grab;
+            transition: transform 0.5s ease-out; /* Ease-out for fast start, slow finish on snap-back */
+            pointer-events: all;
+        }
+        .letter:active {
+            cursor: grabbing;
+        }
+        #logo-container {
+            transition: transform 0.5s ease; /* Smooth flip animation */
+        }
     </style>
 </head>
 <body>
-    <h1>Welcome to logangj.com!</h1>
-    <p>This is my custom site built with raw HTML on GitHub Pages.</p>
-    <p>Feel free to edit this file or add more pages.</p>
+    <svg viewBox="-150 -280 750 750">
+        <g id="logo-container">
+            <!-- J Shape -->
+            <g id="j-group" class="letter">
+                <path d="M 175 75 H 350 V 250 A 125 125 0 0 1 100 255" fill="none" stroke="white" stroke-width="75" stroke-linecap="butt" stroke-linejoin="round" />
+            </g>
+            <!-- L Shape -->
+            <g id="l-group" class="letter">
+                <path d="M 105 -65 V 185 H 280" fill="none" stroke="white" stroke-width="75" stroke-linecap="butt" stroke-linejoin="round" />
+            </g>
+        </g>
+    </svg>
+
+    <script>
+        const container = document.getElementById('logo-container');
+        const letters = document.querySelectorAll('.letter');
+        let rotation = 0;
+
+        letters.forEach(letter => {
+            let isDragging = false;
+            let startX = 0, startY = 0;
+            let dragStartX = 0, dragStartY = 0;
+            let initialX = 0, initialY = 0;
+
+            letter.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                dragStartX = startX;
+                dragStartY = startY;
+                letter.style.transition = 'none'; // No transition while dragging
+                let transformAttr = letter.getAttribute('transform') || '';
+                let match = transformAttr.match(/translate\((-?\d+\.?\d*),\s*(-?\d+\.?\d*)\)/);
+                initialX = match ? parseFloat(match[1]) : 0;
+                initialY = match ? parseFloat(match[2]) : 0;
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    let dx = e.clientX - startX;
+                    let dy = e.clientY - startY;
+                    if (rotation % 360 === 180) {
+                        dx = -dx;
+                        dy = -dy;
+                    }
+                    letter.setAttribute('transform', `translate(${initialX + dx}, ${initialY + dy})`);
+                }
+            });
+
+            document.addEventListener('mouseup', (e) => {
+                if (isDragging) {
+                    isDragging = false;
+                    const endX = e.clientX;
+                    const endY = e.clientY;
+                    let dx = endX - dragStartX;
+                    let dy = endY - dragStartY;
+                    if (rotation % 360 === 180) {
+                        dx = -dx;
+                        dy = -dy;
+                    }
+
+                    if (Math.abs(dx) < 5 && Math.abs(dy) < 5) {
+                        // Click without drag: flip the logo
+                        rotation += 180;
+                        container.setAttribute('transform', `rotate(${rotation}, 225, 185)`);
+                    } else {
+                        // Snap back
+                        letter.style.transition = 'transform 0.5s ease-out';
+                        letter.setAttribute('transform', '');
+                    }
+                }
+            });
+        });
+    </script>
 </body>
 </html>
