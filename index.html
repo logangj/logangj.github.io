@@ -56,6 +56,44 @@
         path {
             pointer-events: stroke; /* Limit selectable area to the white stroke */
         }
+
+        /* Styles for the new input bar - white outline, black background for input, fade effect */
+        #input-bar {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100; /* Ensure it's above other elements */
+            background-color: transparent; /* Transparent background for the bar itself */
+            border: 2px solid white; /* White outline */
+            padding: 5px 10px; /* Reduced padding to make the box smaller vertically and horizontally */
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            display: none; /* Hidden by default, will be set to flex when visible */
+            flex-direction: row;
+            align-items: center;
+            justify-content: center; /* Center the input within the bar */
+            box-sizing: border-box; /* Include padding and border in the element's total width and height */
+            width: 250px; /* Adjusted width for the bar */
+
+            opacity: 0; /* Start with 0 opacity for fade-in */
+            pointer-events: none; /* Disable interaction when hidden */
+            transition: opacity 0.3s ease-in-out; /* Smooth fade transition */
+        }
+
+        #keyword-input {
+            background-color: black; /* Black background for the input field */
+            color: white; /* White text color */
+            border: none; /* No individual border, outline comes from parent */
+            border-radius: 5px; /* Rounded corners for the input field */
+            font-size: 18px;
+            padding: 2px; /* Reduced padding for the input field itself */
+            width: 100%; /* Fill the width of its parent (#input-bar) */
+            outline: none; /* Remove default focus outline */
+            text-align: center; /* Center the text inside the input */
+            height: 24px; /* Explicit height to ensure consistent vertical size */
+            line-height: 24px; /* Match line-height to height for vertical centering of text */
+        }
     </style>
 </head>
 <body>
@@ -66,7 +104,7 @@
             <!-- J Shape group -->
             <g id="j-group" class="letter">
                 <!-- Path for the J shape, styled with white stroke and rounded joins -->
-                <path d="M 175 75 H 350 V 250 A 125 125 0 0 1 100 255" fill="none" stroke="white" stroke-width="75" stroke-linecap="butt" stroke-linejoin="round" />
+                <path d="M 175 75 H 350 V 250 A 125 125 0 0 1 100 250" fill="none" stroke="white" stroke-width="75" stroke-linecap="butt" stroke-linejoin="round" />
             </g>
             <!-- L Shape group -->
             <g id="l-group" class="letter">
@@ -76,14 +114,31 @@
         </g>
     </svg>
 
+    <!-- New text input bar -->
+    <div id="input-bar">
+        <input type="text" id="keyword-input"> <!-- Removed placeholder text -->
+    </div>
+
     <script>
         // Get references to the root SVG element, the main container, and individual letter groups
         const svg = document.querySelector('svg'); // Needed to create SVGPoint objects
         const container = document.getElementById('logo-container');
         const letters = document.querySelectorAll('.letter');
+        const inputBar = document.getElementById('input-bar');
+        const keywordInput = document.getElementById('keyword-input');
 
         // Variable for tracking the rotation of the main container
         let containerRotation = 0; // Tracks the rotation applied to the #logo-container
+
+        // Map of keywords to URLs
+        const keywordMap = {
+            "elisabeth": "https://logangj.com/skook",
+            "esther": "https://logangj.com/goofers",
+            "daniel": "https://logangj.com/bro",
+            "hannah": "https://logangj.com/boopsers",
+            "dean": "https://logangj.com/lightningmcdean",
+            "tanner": "https://logangj.com/tanner"
+        };
 
         /**
          * Helper function to get clientX and clientY from a mouse or touch event.
@@ -175,7 +230,7 @@
 
 
             // --- "Dozenal 10 state" conditions (Revised based on user's latest instructions) ---
-            // Condition 1 (dozenal 10): Both J and L are upside down (same as lowercase f)
+            // Condition 1 (dozenal 10): Both letters are upside down (same as lowercase f)
             const bothUpsideDown_dozenal10 = isUpsideDown(jRotation) && isUpsideDown(lRotation);
 
             // Condition 2 (dozenal 10): Same Y-alignment as lowercase f
@@ -184,8 +239,8 @@
             // Condition 3 (dozenal 10): Vertical line of L X-aligned with the end of the J's curve
             // L's long straight side (vertical left bar) is at X=105.
             const lLongSideX_dozenal10 = getTransformedPoint(lGroup, 105, -65).x; // Using (105, -65) as a point on the vertical segment
-            // J's curve ends at (100, 255) in its local coordinate system.
-            const jCurveEndX_dozenal10 = getTransformedPoint(jGroup, 100, 255).x;
+            // J's curve ends at (100, 250) in its local coordinate system (updated from 255 to 250).
+            const jCurveEndX_dozenal10 = getTransformedPoint(jGroup, 100, 250).x;
             const dozenal10_condition3_x_align = Math.abs(lLongSideX_dozenal10 - jCurveEndX_dozenal10) <= tolerance;
 
             const isDozenal10State = bothUpsideDown_dozenal10 && dozenal10_condition2_y_align && dozenal10_condition3_x_align;
@@ -308,7 +363,7 @@
                 }
             };
             document.addEventListener('mousemove', handleMove);
-            document.addEventListener('touchmove', handleMove);
+            document.addEventListener('touchmove', handleMove, { passive: false }); // {passive: false} to allow preventDefault
 
             // --- Common Up Event Handler (for both mouse and touch) ---
             const handleUp = (e) => {
@@ -318,7 +373,11 @@
 
                     // Only flip if no significant movement occurred during the drag
                     if (!movedDuringDrag) {
-                        letterRotation -= 180; // Rotate clockwise by 180 degrees
+                        if (letter.id === 'l-group') {
+                            letterRotation += 90; // Counterclockwise for L
+                        } else if (letter.id === 'j-group') {
+                            letterRotation -= 90; // Clockwise for J
+                        }
                         letter.setAttribute('rotation', letterRotation); // Store the new rotation on the custom attribute
 
                         // Reapply the transform with the current translation and the new rotation
@@ -332,75 +391,143 @@
             document.addEventListener('touchend', handleUp);
         });
 
-        // --- Desktop Mouse Triple Click Handler for background ---
-        let mouseBackgroundClickCount = 0;
-        let mouseBackgroundClickTimer;
+        // --- Background Click/Tap Logic for Input Bar and Reset ---
+        let backgroundClickTimeout = null;
+        let backgroundClickCount = 0; // Unified counter for mouse and touch background clicks/taps
+        let isWaitingForDoubleClick = false; // Flag to manage single click vs double click
+
+        // Function to show the input bar with fade-in effect
+        function showInputBar() {
+            inputBar.style.display = 'flex';
+            // Use a small timeout to ensure display:flex is applied before transition starts
+            setTimeout(() => {
+                inputBar.style.opacity = '1';
+                inputBar.style.pointerEvents = 'all';
+                keywordInput.focus();
+            }, 10); // Small delay to allow display property to take effect
+        }
+
+        // Function to hide the input bar with fade-out effect
+        function hideInputBar() {
+            inputBar.style.opacity = '0';
+            inputBar.style.pointerEvents = 'none';
+            // Hide display after transition completes
+            setTimeout(() => {
+                inputBar.style.display = 'none';
+                keywordInput.value = ''; // Clear input when hidden
+            }, 300); // Match CSS transition duration
+        }
 
         document.body.addEventListener('click', (e) => {
-            // Only process if the click is on the background (not on a letter) and it's a mouse click
-            if (!e.target.closest('.letter') && e.pointerType === 'mouse') {
-                mouseBackgroundClickCount++;
-                clearTimeout(mouseBackgroundClickTimer);
-                mouseBackgroundClickTimer = setTimeout(() => {
-                    if (mouseBackgroundClickCount === 3) {
-                        containerRotation -= 180;
-                        container.setAttribute('transform', `rotate(${containerRotation}, 225, 185)`);
-                        checkAlignment(); // Check alignment after container flip
-                    }
-                    mouseBackgroundClickCount = 0; // Reset count after timeout
-                }, 400); // Standard triple-click detection time
+            // Check if the click is on the background (not on a letter or the input bar)
+            if (!e.target.closest('.letter') && !e.target.closest('#input-bar')) {
+                backgroundClickCount++;
+                if (backgroundClickCount === 1) {
+                    // This is the first click. Start a timer to see if a second click follows.
+                    isWaitingForDoubleClick = true;
+                    backgroundClickTimeout = setTimeout(() => {
+                        if (backgroundClickCount === 1) { // It was a single click
+                            if (inputBar.style.opacity === '0') { // If hidden, show it
+                                showInputBar();
+                            } else { // If visible, hide it
+                                hideInputBar();
+                            }
+                        }
+                        backgroundClickCount = 0; // Reset count
+                        isWaitingForDoubleClick = false; // Reset flag
+                    }, 300); // Timeout for double click detection
+                } else if (backgroundClickCount === 2) {
+                    // This is a double click. Clear the single click timer.
+                    clearTimeout(backgroundClickTimeout);
+                    isWaitingForDoubleClick = false; // Not waiting anymore
+                    // Perform double-click reset action
+                    letters.forEach(letter => {
+                        letter.style.transition = 'transform 0.5s ease-out';
+                        letter.setAttribute('transform', '');
+                        letter.setAttribute('rotation', 0);
+                    });
+                    container.style.transition = 'transform 0.5s ease-out';
+                    container.setAttribute('transform', '');
+                    containerRotation = 0;
+                    hideInputBar(); // Hide input bar on reset
+                    backgroundClickCount = 0; // Reset count
+                    checkAlignment(); // Check alignment after reset
+                }
             }
         });
-
-        // --- Mobile Touch Multi-Tap Handler for background (double tap for reset) ---
-        let backgroundTapCount = 0;
-        let backgroundTapTimer;
 
         document.body.addEventListener('touchend', (e) => {
-            // Only process if the tap is on the background (not on a letter)
-            if (!e.target.closest('.letter')) {
+            // Similar logic for touch events
+            if (!e.target.closest('.letter') && !e.target.closest('#input-bar')) {
                 e.preventDefault(); // Prevent default browser behavior like zooming on double tap
 
-                backgroundTapCount++; // Increment tap count
-
-                clearTimeout(backgroundTapTimer); // Clear any existing timer
-
-                // Set a new timer. This timer will execute after a short delay.
-                // If another tap occurs before this timer fires, it will be cleared and reset.
-                backgroundTapTimer = setTimeout(() => {
-                    if (backgroundTapCount === 2) { // Double tap detected
-                        // Reset all letters and container to initial states
-                        letters.forEach(letter => {
-                            letter.style.transition = 'transform 0.5s ease-out';
-                            letter.setAttribute('transform', '');
-                            letter.setAttribute('rotation', 0);
-                        });
-                        container.style.transition = 'transform 0.5s ease-out';
-                        container.setAttribute('transform', '');
-                        containerRotation = 0;
-                    }
-                    // Always reset count after the timer fires, regardless of the number of taps
-                    // This ensures the next tap sequence starts fresh.
-                    backgroundTapCount = 0;
-                    checkAlignment(); // Check alignment after container flip or reset
-                }, 300); // This delay defines the maximum time between taps for them to be considered part of a sequence.
+                backgroundClickCount++;
+                if (backgroundClickCount === 1) {
+                    isWaitingForDoubleClick = true;
+                    backgroundClickTimeout = setTimeout(() => {
+                        if (backgroundClickCount === 1) { // It was a single tap
+                            if (inputBar.style.opacity === '0') { // If hidden, show it
+                                showInputBar();
+                            } else { // If visible, hide it
+                                hideInputBar();
+                            }
+                        }
+                        backgroundClickCount = 0; // Reset count
+                        isWaitingForDoubleClick = false; // Reset flag
+                    }, 300); // Timeout for double tap detection
+                } else if (backgroundClickCount === 2) {
+                    clearTimeout(backgroundClickTimeout);
+                    isWaitingForDoubleClick = false;
+                    // Perform double-tap reset action
+                    letters.forEach(letter => {
+                        letter.style.transition = 'transform 0.5s ease-out';
+                        letter.setAttribute('transform', '');
+                        letter.setAttribute('rotation', 0);
+                    });
+                    container.style.transition = 'transform 0.5s ease-out';
+                    container.setAttribute('transform', '');
+                    containerRotation = 0;
+                    hideInputBar(); // Hide input bar on reset
+                    backgroundClickCount = 0; // Reset count
+                    checkAlignment(); // Check alignment after reset
+                }
             }
         });
 
-        // --- Double click handler for desktop (mouse only) ---
-        document.body.addEventListener('dblclick', (e) => {
-            // Ensure this is a mouse double click (e.pointerType is 'mouse' or e.detail > 1 for browser-generated dblclick)
-            if (e.pointerType === 'mouse' || e.detail > 1) {
-                letters.forEach(letter => {
-                    letter.style.transition = 'transform 0.5s ease-out';
-                    letter.setAttribute('transform', '');
-                    letter.setAttribute('rotation', 0);
-                });
-                container.style.transition = 'transform 0.5s ease-out';
-                container.setAttribute('transform', '');
-                containerRotation = 0;
-                e.preventDefault(); // Prevent default double-click behavior (e.g., text selection)
-                checkAlignment(); // Check alignment after reset
+        // --- Keyword Input Logic ---
+        function processKeyword() {
+            const enteredWord = keywordInput.value.toLowerCase().trim(); // Get value, convert to lowercase, trim whitespace
+            const targetUrl = keywordMap[enteredWord]; // Look up in the map
+
+            if (targetUrl) {
+                console.log(`Keyword "${enteredWord}" matched! Navigating to: ${targetUrl}`);
+                window.open(targetUrl, '_blank'); // Open URL in a new tab
+                hideInputBar(); // Hide the input bar after successful navigation
+            } else {
+                console.log(`Keyword "${enteredWord}" not found.`);
+                // Optionally, you could add a visual cue here, like a temporary message "Invalid word"
+                keywordInput.value = ''; // Clear the input field even if not found
+            }
+        }
+
+        keywordInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                processKeyword();
+            } else if (e.key === 'Escape') { // Allow hiding with Escape key
+                hideInputBar();
+            }
+        });
+
+        // Prevent single click on background from being registered when clicking inside the input bar
+        inputBar.addEventListener('click', (e) => e.stopPropagation());
+        inputBar.addEventListener('touchend', (e) => e.stopPropagation());
+
+        // Handle clicks outside the input bar to hide it, but only if it's already visible
+        document.addEventListener('click', (e) => {
+            // If the input bar is visible AND the click is not inside the input bar AND not on a letter
+            // AND we are not currently waiting for a double click (to prevent hiding immediately after showing)
+            if (inputBar.style.opacity === '1' && !inputBar.contains(e.target) && !e.target.closest('.letter') && !isWaitingForDoubleClick) {
+                hideInputBar();
             }
         });
     </script>
