@@ -5,403 +5,105 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LJ Shapes V1</title>
     <style>
-        /* Ensure html and body take full width and height, prevent scrollbars, and disable default touch actions */
-        html, body {
-            width: 100%;
-            height: 100%;
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            touch-action: none; /* Prevents default touch actions like scrolling/zooming on the whole page */
-        }
-
-        /* Center the SVG horizontally and vertically, set background and font */
         body {
             display: flex;
-            justify-content: center; /* Center horizontally */
-            align-items: center; /* Center vertically */
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
             background-color: black;
-            font-family: "Inter", sans-serif; /* Using Inter font as per instructions */
         }
-
-        /* Style for the SVG container, making it responsive with max dimensions, rounded corners, and a shadow */
         svg {
-            width: 100%; /* Make SVG responsive to fill its parent */
-            height: 100%; /* Make SVG responsive to fill its parent */
-            max-width: 1200px; /* Increased max width for widescreen displays */
-            max-height: 750px; /* Keeping max height the same to allow for wider aspect ratio */
-            user-select: none; /* Prevent text selection */
-            border-radius: 15px; /* Rounded corners for the SVG container */
-            box-shadow: 0 0 20px rgba(255, 255, 255, 0.2); /* Subtle shadow */
+            width: 750px;
+            height: 750px;
+            user-select: none;
         }
-
-        /* Styles for individual letter groups, enabling drag and adding transition for snap-back effect */
         .letter {
-            cursor: grab; /* Indicate draggable element */
+            cursor: grab;
             transition: transform 0.5s ease-out; /* Ease-out for fast start, slow finish on snap-back */
-            pointer-events: all; /* Ensure the entire group is clickable/draggable */
+            pointer-events: all;
         }
-
-        /* Change cursor when actively dragging */
         .letter:active {
             cursor: grabbing;
         }
-
-        /* Smooth flip animation for the main logo container */
         #logo-container {
             transition: transform 0.5s ease; /* Smooth flip animation */
-        }
-
-        /* Limit selectable area of paths to their stroke for better interaction */
-        path {
-            pointer-events: stroke; /* Limit selectable area to the white stroke */
         }
     </style>
 </head>
 <body>
-    <!-- SVG container with a defined viewBox for its coordinate system -->
     <svg viewBox="-150 -280 750 750">
-        <!-- Main group to hold both letters, allowing for overall rotation -->
         <g id="logo-container">
-            <!-- J Shape group -->
+            <!-- J Shape -->
             <g id="j-group" class="letter">
-                <!-- Path for the J shape, styled with white stroke and rounded joins -->
                 <path d="M 175 75 H 350 V 250 A 125 125 0 0 1 100 255" fill="none" stroke="white" stroke-width="75" stroke-linecap="butt" stroke-linejoin="round" />
             </g>
-            <!-- L Shape group -->
+            <!-- L Shape -->
             <g id="l-group" class="letter">
-                <!-- Path for the L shape, styled with white stroke and rounded joins -->
                 <path d="M 105 -65 V 185 H 280" fill="none" stroke="white" stroke-width="75" stroke-linecap="butt" stroke-linejoin="round" />
             </g>
         </g>
     </svg>
 
     <script>
-        // Get references to the root SVG element, the main container, and individual letter groups
-        const svg = document.querySelector('svg'); // Needed to create SVGPoint objects
         const container = document.getElementById('logo-container');
         const letters = document.querySelectorAll('.letter');
+        let rotation = 0;
 
-        // Variable for tracking the rotation of the main container
-        let containerRotation = 0; // Tracks the rotation applied to the #logo-container
-
-        /**
-         * Helper function to get clientX and clientY from a mouse or touch event.
-         * For touch events, it prioritizes `touches[0]` for `touchstart`/`touchmove`
-         * and `changedTouches[0]` for `touchend`. For mouse events, it uses `evt` directly.
-         * @param {Event} evt - The mouse or touch event.
-         * @returns {{clientX: number, clientY: number}} Object with clientX and clientY.
-         */
-        function getEventClientCoords(evt) {
-            const source = evt.touches && evt.touches.length > 0 ? evt.touches[0] :
-                           (evt.changedTouches && evt.changedTouches.length > 0 ? evt.changedTouches[0] : evt);
-            return { clientX: source.clientX, clientY: source.clientY };
-        }
-
-        /**
-         * Helper function to convert screen coordinates (clientX, clientY) to
-         * the local coordinate system of a given SVG element.
-         * @param {Event} evt - The mouse or touch event.
-         * @param {SVGElement} element - The SVG element whose local coordinates are desired.
-         * @returns {SVGPoint} An SVGPoint object with x and y coordinates in the element's local system.
-         */
-        function getPointInElementCoords(evt, element) {
-            const clientCoords = getEventClientCoords(evt);
-            const CTM = element.getScreenCTM(); // Get the transformation matrix from element's local space to screen space
-            let pt = svg.createSVGPoint(); // Create a new SVG point
-            pt.x = clientCoords.clientX;
-            pt.y = clientCoords.clientY;
-            // Transform the screen point by the inverse of the element's CTM
-            // This converts the screen point into the element's local coordinate system
-            return pt.matrixTransform(CTM.inverse());
-        }
-
-        /**
-         * Transforms a point from an element's local coordinate system to the SVG's root coordinate system.
-         * This is crucial for checking relative positions after transforms.
-         * @param {SVGElement} element - The SVG element (e.g., a letter group).
-         * @param {number} x - The x-coordinate in the element's local system.
-         * @param {number} y - The y-coordinate in the element's local system.
-         * @returns {SVGPoint} The transformed point in SVG root coordinates.
-         */
-        function getTransformedPoint(element, x, y) {
-            let pt = svg.createSVGPoint();
-            pt.x = x;
-            pt.y = y;
-
-            // getCTM() returns the transformation matrix from the element's local coordinate system
-            // to the SVG's root coordinate system, including all ancestor transforms.
-            const transformMatrix = element.getCTM();
-            return pt.matrixTransform(transformMatrix);
-        }
-
-        /**
-         * Checks if any of the defined alignment conditions are met.
-         * If any set of conditions are met, navigates to google.com.
-         */
-        function checkAlignment() {
-            const jGroup = document.getElementById('j-group');
-            const lGroup = document.getElementById('l-group');
-
-            const tolerance = 10; // Tolerance for alignment conditions in pixels
-
-            // Get the current rotation of each letter from its custom attribute
-            const jRotation = parseFloat(jGroup.getAttribute('rotation') || 0);
-            const lRotation = parseFloat(lGroup.getAttribute('rotation') || 0);
-
-            // Helper to check if a letter is upside down (rotated 180 degrees)
-            const isUpsideDown = (rotation) => Math.abs((rotation % 360 + 360) % 360) === 180;
-
-
-            // --- "Lowercase f state" conditions ---
-            // Condition: Both letters are upside down
-            const bothUpsideDown_f = isUpsideDown(jRotation) && isUpsideDown(lRotation);
-
-            // Condition 1 (lowercase f): Shorter straight side of J (top bar) and Shorter side of L (bottom bar) Y-alignment
-            // J's shorter straight side (top bar) starts at (175, 75). We'll use Y=75.
-            const jShorterSideY_f = getTransformedPoint(jGroup, 175, 75).y;
-            // L's shorter side (bottom horizontal bar) is at Y=185. We'll use Y=185.
-            const lShorterSideY_f = getTransformedPoint(lGroup, 105, 185).y; // Using (105, 185) as a point on the horizontal segment
-            const lowercaseF_condition1 = Math.abs(jShorterSideY_f - lShorterSideY_f) <= tolerance;
-
-            // Condition 2 (lowercase f): Long straight sides (vertical) of each letter X-alignment
-            // J's long straight side (vertical right bar) is at X=350. We'll use X=350.
-            const jLongSideX_f = getTransformedPoint(jGroup, 350, 75).x; // Using (350, 75) as a point on the vertical segment
-            // L's long straight side (vertical left bar) is at X=105. We'll use X=105.
-            const lLongSideX_f = getTransformedPoint(lGroup, 105, -65).x; // Using (105, -65) as a point on the vertical segment
-            const lowercaseF_condition2 = Math.abs(jLongSideX_f - lLongSideX_f) <= tolerance;
-
-            const isLowercaseFState = lowercaseF_condition1 && lowercaseF_condition2 && bothUpsideDown_f;
-
-
-            // --- "Dozenal 10 state" conditions (Revised based on user's latest instructions) ---
-            // Condition 1 (dozenal 10): Both J and L are upside down (same as lowercase f)
-            const bothUpsideDown_dozenal10 = isUpsideDown(jRotation) && isUpsideDown(lRotation);
-
-            // Condition 2 (dozenal 10): Same Y-alignment as lowercase f
-            const dozenal10_condition2_y_align = lowercaseF_condition1; // Re-use the Y-alignment check from lowercase f
-
-            // Condition 3 (dozenal 10): Vertical line of L X-aligned with the end of the J's curve
-            // L's long straight side (vertical left bar) is at X=105.
-            const lLongSideX_dozenal10 = getTransformedPoint(lGroup, 105, -65).x; // Using (105, -65) as a point on the vertical segment
-            // J's curve ends at (100, 255) in its local coordinate system.
-            const jCurveEndX_dozenal10 = getTransformedPoint(jGroup, 100, 255).x;
-            const dozenal10_condition3_x_align = Math.abs(lLongSideX_dozenal10 - jCurveEndX_dozenal10) <= tolerance;
-
-            const isDozenal10State = bothUpsideDown_dozenal10 && dozenal10_condition2_y_align && dozenal10_condition3_x_align;
-
-
-            // --- Check if either state is met ---
-            if (isLowercaseFState) {
-                console.log("Lowercase f state achieved! Navigating to Google.");
-                // Use a small timeout to allow the last visual update to render before navigation
-                setTimeout(() => {
-                    // Open in a new tab to avoid "refuses to connect" error in iframe
-                    window.open('https://www.google.com', '_blank');
-                }, 50);
-            } else if (isDozenal10State) {
-                console.log("Dozenal 10 state achieved! Navigating to Google.");
-                // Use a small timeout to allow the last visual update to render before navigation
-                setTimeout(() => {
-                    // Open in a new tab to avoid "refuses to connect" error in iframe
-                    window.open('https://www.google.com', '_blank');
-                }, 50);
-            }
-        }
-
-
-        // Iterate over each letter to add drag and click functionality
         letters.forEach(letter => {
-            let isDragging = false; // Flag to indicate if the letter is being dragged
-            let startClientX = 0, startClientY = 0; // Initial mouse/touch coordinates on down event (for click vs. drag detection)
-            let letterTranslateX = 0, letterTranslateY = 0; // Current translation of the letter (relative to its parent, #logo-container)
-            let dragOffsetX = 0, dragOffsetY = 0; // Offset from the letter's translated origin to the mouse/touch point, in parent's coords
-            let letterRotation = 0; // Current rotation of the individual letter (stored on custom attribute)
-            let movedDuringDrag = false; // New flag to track if actual movement occurred during drag
+            let isDragging = false;
+            let startX = 0, startY = 0;
+            let dragStartX = 0, dragStartY = 0;
+            let initialX = 0, initialY = 0;
 
-            // --- Mouse Events ---
             letter.addEventListener('mousedown', (e) => {
-                e.preventDefault(); // Prevent default browser drag behavior (e.g., image dragging)
                 isDragging = true;
-                startClientX = e.clientX;
-                startClientY = e.clientY; // Consistent naming
-                letter.style.transition = 'none'; // Disable transition while dragging for smooth movement
-                movedDuringDrag = false; // Reset flag on new drag/click
-
-                // Get the mouse click point in the coordinate system of the PARENT container (#logo-container)
-                const mouseClickInParentCoords = getPointInElementCoords(e, container);
-
-                // Extract current translation from the letter's transform attribute.
-                // These values are relative to the letter's parent (#logo-container).
+                startX = e.clientX;
+                startY = e.clientY;
+                dragStartX = startX;
+                dragStartY = startY;
+                letter.style.transition = 'none'; // No transition while dragging
                 let transformAttr = letter.getAttribute('transform') || '';
-                let translateMatch = transformAttr.match(/translate\((-?\d+\.?\d*),\s*(-?\d+\.?\d*)\)/);
-                letterTranslateX = translateMatch ? parseFloat(translateMatch[1]) : 0;
-                letterTranslateY = translateMatch ? parseFloat(translateMatch[2]) : 0;
-
-                // Calculate the offset from the letter's current translated position (relative to parent)
-                // to the mouse click point (also relative to parent).
-                // This offset will be maintained during the drag, ensuring the letter moves directly with the mouse.
-                dragOffsetX = mouseClickInParentCoords.x - letterTranslateX;
-                dragOffsetY = mouseClickInParentCoords.y - letterTranslateY;
-
-                // Get current rotation value from the custom 'rotation' attribute
-                letterRotation = parseFloat(letter.getAttribute('rotation') || 0);
+                let match = transformAttr.match(/translate\((-?\d+\.?\d*),\s*(-?\d+\.?\d*)\)/);
+                initialX = match ? parseFloat(match[1]) : 0;
+                initialY = match ? parseFloat(match[2]) : 0;
             });
 
-            // --- Touch Events ---
-            letter.addEventListener('touchstart', (e) => {
-                e.preventDefault(); // Prevent default touch behaviors (e.g., scrolling, zooming, tap highlights)
-                isDragging = true;
-                startClientX = e.touches[0].clientX;
-                startClientY = e.touches[0].clientY; // Consistent naming
-                letter.style.transition = 'none'; // Disable transition while dragging for smooth movement
-                movedDuringDrag = false; // Reset flag on new drag/click
-
-                // Get the touch start point in the coordinate system of the PARENT container (#logo-container)
-                const touchStartInParentCoords = getPointInElementCoords(e, container);
-
-                // Extract current translation from the letter's transform attribute.
-                let transformAttr = letter.getAttribute('transform') || '';
-                let translateMatch = transformAttr.match(/translate\((-?\d+\.?\d*),\s*(-?\d+\.?\d*)\)/);
-                letterTranslateX = translateMatch ? parseFloat(translateMatch[1]) : 0;
-                letterTranslateY = translateMatch ? parseFloat(translateMatch[2]) : 0;
-
-                // Calculate the offset from the letter's current translated position (relative to parent)
-                // to the touch start point (also relative to parent).
-                dragOffsetX = touchStartInParentCoords.x - letterTranslateX;
-                dragOffsetY = touchStartInParentCoords.y - letterTranslateY;
-
-                // Get current rotation value from the custom 'rotation' attribute
-                letterRotation = parseFloat(letter.getAttribute('rotation') || 0);
-            });
-
-            // --- Common Move Event Handler (for both mouse and touch) ---
-            const handleMove = (e) => {
+            document.addEventListener('mousemove', (e) => {
                 if (isDragging) {
-                    e.preventDefault(); // Crucial to prevent scrolling/zooming during drag
-
-                    const currentClientCoords = getEventClientCoords(e);
-                    const currentDx = currentClientCoords.clientX - startClientX;
-                    const currentDy = currentClientCoords.clientY - startClientY;
-
-                    // If movement exceeds a very small threshold, mark as moved
-                    // This threshold helps distinguish accidental micro-movements from intentional drags
-                    if (Math.abs(currentDx) > 0.5 || Math.abs(currentDy) > 0.5) {
-                        movedDuringDrag = true;
+                    let dx = e.clientX - startX;
+                    let dy = e.clientY - startY;
+                    if (rotation % 360 === 180) {
+                        dx = -dx;
+                        dy = -dy;
                     }
-
-                    // Get the current pointer (mouse or touch) position in the PARENT container's coordinates
-                    const currentPointerInParentCoords = getPointInElementCoords(e, container);
-
-                    // Calculate the new translation for the letter's origin.
-                    // This is the current pointer position in the parent's coordinates minus the initial drag offset.
-                    const newX = currentPointerInParentCoords.x - dragOffsetX;
-                    const newY = currentPointerInParentCoords.y - dragOffsetY;
-
-                    // Update the letter's current translation for the next move event
-                    letterTranslateX = newX;
-                    letterTranslateY = newY;
-
-                    // Apply the new translate and the existing rotation.
-                    // The rotation origin (225, 185) is fixed relative to the SVG viewBox for individual letter flips.
-                    letter.setAttribute('transform', `translate(${newX}, ${newY}) rotate(${letterRotation}, 225, 185)`);
+                    letter.setAttribute('transform', `translate(${initialX + dx}, ${initialY + dy})`);
                 }
-            };
-            document.addEventListener('mousemove', handleMove);
-            document.addEventListener('touchmove', handleMove);
+            });
 
-            // --- Common Up Event Handler (for both mouse and touch) ---
-            const handleUp = (e) => {
+            document.addEventListener('mouseup', (e) => {
                 if (isDragging) {
                     isDragging = false;
-                    letter.style.transition = 'transform 0.5s ease-out'; // Re-enable transition for snap-back
-
-                    // Only flip if no significant movement occurred during the drag
-                    if (!movedDuringDrag) {
-                        letterRotation -= 180; // Rotate clockwise by 180 degrees
-                        letter.setAttribute('rotation', letterRotation); // Store the new rotation on the custom attribute
-
-                        // Reapply the transform with the current translation and the new rotation
-                        letter.setAttribute('transform', `translate(${letterTranslateX}, ${letterTranslateY}) rotate(${letterRotation}, 225, 185)`);
+                    const endX = e.clientX;
+                    const endY = e.clientY;
+                    let dx = endX - dragStartX;
+                    let dy = endY - dragStartY;
+                    if (rotation % 360 === 180) {
+                        dx = -dx;
+                        dy = -dy;
                     }
-                    // Always check alignment after a letter interaction
-                    checkAlignment();
+
+                    if (Math.abs(dx) < 5 && Math.abs(dy) < 5) {
+                        // Click without drag: flip the logo
+                        rotation += 180;
+                        container.setAttribute('transform', `rotate(${rotation}, 225, 185)`);
+                    } else {
+                        // Snap back
+                        letter.style.transition = 'transform 0.5s ease-out';
+                        letter.setAttribute('transform', '');
+                    }
                 }
-            };
-            document.addEventListener('mouseup', handleUp);
-            document.addEventListener('touchend', handleUp);
-        });
-
-        // --- Desktop Mouse Triple Click Handler for background ---
-        let mouseBackgroundClickCount = 0;
-        let mouseBackgroundClickTimer;
-
-        document.body.addEventListener('click', (e) => {
-            // Only process if the click is on the background (not on a letter) and it's a mouse click
-            if (!e.target.closest('.letter') && e.pointerType === 'mouse') {
-                mouseBackgroundClickCount++;
-                clearTimeout(mouseBackgroundClickTimer);
-                mouseBackgroundClickTimer = setTimeout(() => {
-                    if (mouseBackgroundClickCount === 3) {
-                        containerRotation -= 180;
-                        container.setAttribute('transform', `rotate(${containerRotation}, 225, 185)`);
-                        checkAlignment(); // Check alignment after container flip
-                    }
-                    mouseBackgroundClickCount = 0; // Reset count after timeout
-                }, 400); // Standard triple-click detection time
-            }
-        });
-
-        // --- Mobile Touch Multi-Tap Handler for background (double tap for reset) ---
-        let backgroundTapCount = 0;
-        let backgroundTapTimer;
-
-        document.body.addEventListener('touchend', (e) => {
-            // Only process if the tap is on the background (not on a letter)
-            if (!e.target.closest('.letter')) {
-                e.preventDefault(); // Prevent default browser behavior like zooming on double tap
-
-                backgroundTapCount++; // Increment tap count
-
-                clearTimeout(backgroundTapTimer); // Clear any existing timer
-
-                // Set a new timer. This timer will execute after a short delay.
-                // If another tap occurs before this timer fires, it will be cleared and reset.
-                backgroundTapTimer = setTimeout(() => {
-                    if (backgroundTapCount === 2) { // Double tap detected
-                        // Reset all letters and container to initial states
-                        letters.forEach(letter => {
-                            letter.style.transition = 'transform 0.5s ease-out';
-                            letter.setAttribute('transform', '');
-                            letter.setAttribute('rotation', 0);
-                        });
-                        container.style.transition = 'transform 0.5s ease-out';
-                        container.setAttribute('transform', '');
-                        containerRotation = 0;
-                    }
-                    // Always reset count after the timer fires, regardless of the number of taps
-                    // This ensures the next tap sequence starts fresh.
-                    backgroundTapCount = 0;
-                    checkAlignment(); // Check alignment after container flip or reset
-                }, 300); // This delay defines the maximum time between taps for them to be considered part of a sequence.
-            }
-        });
-
-        // --- Double click handler for desktop (mouse only) ---
-        document.body.addEventListener('dblclick', (e) => {
-            // Ensure this is a mouse double click (e.pointerType is 'mouse' or e.detail > 1 for browser-generated dblclick)
-            if (e.pointerType === 'mouse' || e.detail > 1) {
-                letters.forEach(letter => {
-                    letter.style.transition = 'transform 0.5s ease-out';
-                    letter.setAttribute('transform', '');
-                    letter.setAttribute('rotation', 0);
-                });
-                container.style.transition = 'transform 0.5s ease-out';
-                container.setAttribute('transform', '');
-                containerRotation = 0;
-                e.preventDefault(); // Prevent default double-click behavior (e.g., text selection)
-                checkAlignment(); // Check alignment after reset
-            }
+            });
         });
     </script>
 </body>
