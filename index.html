@@ -50,16 +50,18 @@
 
     <script>
         const container = document.getElementById('logo-container');
+        const svg = document.querySelector('svg');
         const letters = document.querySelectorAll('.letter');
         let clicks = 0;
         let timer;
-        let rotation = 0;
+        let containerRotation = 0;
 
         letters.forEach(letter => {
             let isDragging = false;
             let startX = 0, startY = 0;
             let dragStartX = 0, dragStartY = 0;
             let initialX = 0, initialY = 0;
+            let letterRotation = 0;
 
             letter.addEventListener('mousedown', (e) => {
                 isDragging = true;
@@ -72,17 +74,18 @@
                 let match = transformAttr.match(/translate\((-?\d+\.?\d*),\s*(-?\d+\.?\d*)\)/);
                 initialX = match ? parseFloat(match[1]) : 0;
                 initialY = match ? parseFloat(match[2]) : 0;
+                letterRotation = parseFloat(letter.getAttribute('rotation') || 0);
             });
 
             document.addEventListener('mousemove', (e) => {
                 if (isDragging) {
                     let dx = e.clientX - startX;
                     let dy = e.clientY - startY;
-                    if (rotation % 360 === 180) {
-                        dx = -dx;
-                        dy = -dy;
-                    }
-                    letter.setAttribute('transform', `translate(${initialX + dx}, ${initialY + dy})`);
+                    // Adjust for container rotation only
+                    let rad = (containerRotation * Math.PI) / 180;
+                    let adjustedDx = dx * Math.cos(rad) + dy * Math.sin(rad);
+                    let adjustedDy = -dx * Math.sin(rad) + dy * Math.cos(rad);
+                    letter.setAttribute('transform', `translate(${initialX + adjustedDx}, ${initialY + adjustedDy}) rotate(${letterRotation}, 225, 185)`);
                 }
             });
 
@@ -93,26 +96,21 @@
                     const endY = e.clientY;
                     let dx = endX - dragStartX;
                     let dy = endY - dragStartY;
-                    if (rotation % 360 === 180) {
-                        dx = -dx;
-                        dy = -dy;
-                    }
-
+                    // Adjust for container rotation only
+                    let rad = (containerRotation * Math.PI) / 180;
+                    let adjustedDx = dx * Math.cos(rad) + dy * Math.sin(rad);
+                    let adjustedDy = -dx * Math.sin(rad) + dy * Math.cos(rad);
                     if (Math.abs(dx) < 5 && Math.abs(dy) < 5) {
-                        // Single click: flip individual letter smoothly
-                        let letterRotation = letter.getAttribute('rotation') || 0;
-                        letterRotation = parseFloat(letterRotation) + 180;
+                        // Single click: flip individual letter
+                        letterRotation -= 180; // Clockwise
                         letter.setAttribute('rotation', letterRotation);
                         letter.style.transition = 'transform 0.5s ease';
                         letter.setAttribute('transform', `translate(${initialX}, ${initialY}) rotate(${letterRotation}, 225, 185)`);
-                        setTimeout(() => {
-                            letter.style.transition = 'transform 0.5s ease-out';
-                        }, 500);
                     } else {
                         // Stay in place
-                        initialX += dx;
-                        initialY += dy;
-                        letter.setAttribute('transform', `translate(${initialX}, ${initialY}) rotate(${letter.getAttribute('rotation') || 0}, 225, 185)`);
+                        initialX += adjustedDx;
+                        initialY += adjustedDy;
+                        letter.setAttribute('transform', `translate(${initialX}, ${initialY}) rotate(${letterRotation}, 225, 185)`);
                     }
                 }
             });
@@ -126,19 +124,22 @@
                 timer = setTimeout(() => clicks = 0, 400);
                 if (clicks === 3) {
                     clicks = 0;
-                    rotation += 180;
-                    container.setAttribute('transform', `rotate(${rotation}, 225, 185)`);
+                    containerRotation -= 180; // Clockwise
+                    container.setAttribute('transform', `rotate(${containerRotation}, 225, 185)`);
                 }
             }
         });
 
-        // Double click anywhere to snap back all letters
+        // Double click anywhere to reset all letters and container
         document.body.addEventListener('dblclick', (e) => {
             letters.forEach(letter => {
                 letter.style.transition = 'transform 0.5s ease-out';
                 letter.setAttribute('transform', '');
                 letter.setAttribute('rotation', 0);
             });
+            container.style.transition = 'transform 0.5s ease-out';
+            container.setAttribute('transform', '');
+            containerRotation = 0;
             e.preventDefault();
         });
     </script>
