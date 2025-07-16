@@ -24,15 +24,13 @@
             font-family: "Inter", sans-serif; /* Using Inter font as per instructions */
         }
 
-        /* Style for the SVG container, making it responsive with max dimensions, rounded corners, and a shadow */
+        /* Style for the SVG container, making it responsive to fill available space */
         svg {
+            background-color: transparent; /* Ensure no background from SVG itself */
             width: 100%; /* Make SVG responsive to fill its parent */
             height: 100%; /* Make SVG responsive to fill its parent */
-            max-width: 1200px; /* Increased max width for widescreen displays */
-            max-height: 750px; /* Keeping max height the same to allow for wider aspect ratio */
             user-select: none; /* Prevent text selection */
-            border-radius: 15px; /* Rounded corners for the SVG container */
-            box-shadow: 0 0 20px rgba(255, 255, 255, 0.2); /* Subtle shadow */
+            /* Removed max-width, max-height, border-radius, box-shadow to remove the visible window */
         }
 
         /* Styles for individual letter groups, enabling drag and adding transition for snap-back effect */
@@ -59,10 +57,7 @@
 
         /* Styles for the new input bar - white outline, black background for input, fade effect */
         #input-bar {
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
+            position: absolute; /* Positioned absolutely relative to the body */
             z-index: 100; /* Ensure it's above other elements */
             background-color: transparent; /* Transparent background for the bar itself */
             border: 2px solid white; /* White outline */
@@ -398,6 +393,11 @@
 
         // Function to show the input bar with fade-in effect
         function showInputBar() {
+            const svgRect = svg.getBoundingClientRect(); // Get SVG's position and size
+            inputBar.style.left = (svgRect.left + svgRect.width / 2) + 'px';
+            inputBar.style.top = (svgRect.top + 20) + 'px';
+            inputBar.style.transform = 'translateX(-50%)'; // Keep this for horizontal centering
+
             inputBar.style.display = 'flex';
             // Use a small timeout to ensure display:flex is applied before transition starts
             setTimeout(() => {
@@ -417,6 +417,14 @@
                 keywordInput.value = ''; // Clear input when hidden
             }, 300); // Match CSS transition duration
         }
+
+        // Event listener for window resize to reposition the input bar if visible
+        window.addEventListener('resize', () => {
+            if (inputBar.style.opacity === '1') { // Only reposition if currently visible
+                showInputBar(); // Re-calculate position based on new SVG dimensions
+            }
+        });
+
 
         document.body.addEventListener('click', (e) => {
             // Check if the click is on the background (not on a letter or the input bar)
