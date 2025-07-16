@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>logangj</title>
+    <title>LJ Shapes V1</title>
     <style>
         body {
             display: flex;
@@ -29,6 +29,9 @@
         #logo-container {
             transition: transform 0.5s ease; /* Smooth flip animation */
         }
+        path {
+            pointer-events: stroke; /* Limit selectable area to the white stroke */
+        }
     </style>
 </head>
 <body>
@@ -48,6 +51,8 @@
     <script>
         const container = document.getElementById('logo-container');
         const letters = document.querySelectorAll('.letter');
+        let clicks = 0;
+        let timer;
         let rotation = 0;
 
         letters.forEach(letter => {
@@ -94,16 +99,47 @@
                     }
 
                     if (Math.abs(dx) < 5 && Math.abs(dy) < 5) {
-                        // Click without drag: flip the logo
-                        rotation += 180;
-                        container.setAttribute('transform', `rotate(${rotation}, 225, 185)`);
+                        // Single click: flip individual letter smoothly
+                        let letterRotation = letter.getAttribute('rotation') || 0;
+                        letterRotation = parseFloat(letterRotation) + 180;
+                        letter.setAttribute('rotation', letterRotation);
+                        letter.style.transition = 'transform 0.5s ease';
+                        letter.setAttribute('transform', `translate(${initialX}, ${initialY}) rotate(${letterRotation}, 225, 185)`);
+                        setTimeout(() => {
+                            letter.style.transition = 'transform 0.5s ease-out';
+                        }, 500);
                     } else {
-                        // Snap back
-                        letter.style.transition = 'transform 0.5s ease-out';
-                        letter.setAttribute('transform', '');
+                        // Stay in place
+                        initialX += dx;
+                        initialY += dy;
+                        letter.setAttribute('transform', `translate(${initialX}, ${initialY}) rotate(${letter.getAttribute('rotation') || 0}, 225, 185)`);
                     }
                 }
             });
+        });
+
+        // Triple click on background to flip both
+        document.body.addEventListener('click', (e) => {
+            if (!e.target.closest('.letter')) {
+                clicks++;
+                clearTimeout(timer);
+                timer = setTimeout(() => clicks = 0, 400);
+                if (clicks === 3) {
+                    clicks = 0;
+                    rotation += 180;
+                    container.setAttribute('transform', `rotate(${rotation}, 225, 185)`);
+                }
+            }
+        });
+
+        // Double click anywhere to snap back all letters
+        document.body.addEventListener('dblclick', (e) => {
+            letters.forEach(letter => {
+                letter.style.transition = 'transform 0.5s ease-out';
+                letter.setAttribute('transform', '');
+                letter.setAttribute('rotation', 0);
+            });
+            e.preventDefault();
         });
     </script>
 </body>
