@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Hogwarts!</title>
+    <meta name="robots" content="noindex"> <!-- Prevents web crawlers from indexing this page -->
+    <style>
+        /* General Body and HTML Styling */
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Prevent scrolling */
+            background-color: black;
+            font-family: "Inter", sans-serif; /* Using Inter font */
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            position: relative; /* For absolute positioning of elements */
+        }
+
+        /* Gate Container Styling (Trivia Question & Input) */
+        #gate-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 100;
+            background-color: transparent;
+            border: 2px solid white;
+            padding: 25px 30px;
+            border-radius: 15px;
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            opacity: 1; /* Initially visible */
+            transition: opacity 0.5s ease-in-out; /* Fade transition */
+            box-sizing: border-box;
+            max-width: 90%; /* Responsive width */
+            width: 400px; /* Max width for desktop */
+        }
+
+        #gate-question {
+            font-size: 1.5em;
+            text-align: center;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+
+        #gate-input {
+            background-color: black;
+            color: white;
+            border: none;
+            border-bottom: 2px solid white; /* Simple underline */
+            padding: 5px 10px;
+            font-size: 1.2em;
+            text-align: center;
+            outline: none;
+            width: 80%; /* Responsive width */
+            max-width: 250px; /* Max width for desktop */
+            border-radius: 5px; /* Slightly rounded corners */
+        }
+
+        #gate-message {
+            font-size: 0.9em;
+            color: #ff6b6b; /* Light red for error messages */
+            min-height: 1.2em; /* Prevent layout shift */
+        }
+
+        /* Main Content Styling (Harry Potter Celebration) */
+        #main-content {
+            opacity: 0; /* Initially hidden */
+            pointer-events: none; /* Disable interaction when hidden */
+            transition: opacity 1s ease-in-out; /* Fade transition */
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+            text-align: center;
+            overflow-y: auto; /* Allow scrolling if content overflows */
+        }
+
+        #main-content h1 {
+            font-size: 3em;
+            margin-bottom: 20px;
+            color: #ffd700; /* Gold color */
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+
+        .section {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+            width: 80%;
+            max-width: 600px;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+        }
+
+        .section h2 {
+            color: #add8e6; /* Light blue */
+            margin-bottom: 15px;
+        }
+
+        /* Sorting Hat Quiz */
+        #sorting-quiz button {
+            background-color: #4a4a4a;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin: 5px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        #sorting-quiz button:hover {
+            background-color: #6a6a6a;
+        }
+        #sorting-result {
+            margin-top: 15px;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        /* Spell Generator */
+        #spell-generator button {
+            background-color: #8a2be2; /* Blue violet */
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1.1em;
+            transition: background-color 0.2s ease;
+        }
+        #spell-generator button:hover {
+            background-color: #6a00c2;
+        }
+        #generated-spell {
+            margin-top: 15px;
+            font-size: 1.3em;
+            color: #ffe4b5; /* Moccasin */
+        }
+
+        /* Interactive Houses */
+        .house-crests {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .house-crest {
+            width: 100px;
+            height: 100px;
+            border: 2px solid white;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 3em;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            background-color: rgba(0,0,0,0.5); /* Semi-transparent background for the base crest */
+        }
+        .house-crest:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 25px rgba(255, 255, 255, 0.5);
+        }
+        .house-crest.gryffindor { border-color: #a00; }
+        .house-crest.hufflepuff { border-color: #ffc000; }
+        .house-crest.ravenclaw { border-color: #00008b; }
+        .house-crest.slytherin { border-color: #0a0; }
+
+        /* House Info Card (New Element) */
+        #house-info-card {
+            position: fixed; /* Fixed position relative to viewport */
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 200; /* Above everything else */
+            background-color: black; /* Solid black background for readability */
+            border: 2px solid white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 0 40px rgba(255, 255, 255, 0.5);
+            max-width: 80%;
+            width: 450px;
+            text-align: center;
+            opacity: 0; /* Hidden by default */
+            pointer-events: none; /* Disable interaction when hidden */
+            transition: opacity 0.4s ease-in-out; /* Fade transition */
+            display: flex; /* Use flex for internal layout */
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        #house-info-card h3 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        #house-info-card p {
+            font-size: 1.1em;
+            line-height: 1.5;
+        }
+        .house-info-close {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 1.5em;
+            cursor: pointer;
+            color: #ccc;
+            transition: color 0.2s ease;
+        }
+        .house-info-close:hover {
+            color: white;
+        }
+
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            #gate-question {
+                font-size: 1.2em;
+            }
+            #gate-input {
+                font-size: 1em;
+            }
+            #main-content h1 {
+                font-size: 2em;
+            }
+            .section {
+                width: 95%;
+                padding: 15px;
+            }
+            .house-crests {
+                gap: 15px;
+            }
+            .house-crest {
+                width: 70px;
+                height: 70px;
+                font-size: 2em;
+            }
+            #house-info-card {
+                width: 90%;
+                padding: 20px;
+            }
+            #house-info-card h3 {
+                font-size: 1.5em;
+            }
+            #house-info-card p {
+                font-size: 0.9em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Password Gate Container -->
+    <div id="gate-container">
+        <p id="gate-question">What is the name of Harry Potter's owl?</p>
+        <input type="text" id="gate-input">
+        <p id="gate-message"></p>
+    </div>
+
+    <!-- Main Harry Potter Content -->
+    <div id="main-content">
+        <h1>Welcome to Hogwarts!</h1>
+
+        <!-- Sorting Hat Section -->
+        <div class="section" id="sorting-quiz">
+            <h2>The Sorting Hat</h2>
+            <p id="quiz-question">Which quality do you value most?</p>
+            <div id="quiz-options">
+                <button data-house="Gryffindor">Bravery</button>
+                <button data-house="Hufflepuff">Loyalty</button>
+                <button data-house="Ravenclaw">Wisdom</button>
+                <button data-house="Slytherin">Ambition</button>
+            </div>
+            <p id="sorting-result"></p>
+        </div>
+
+        <!-- Spell Generator Section -->
+        <div class="section" id="spell-generator">
+            <h2>Cast a Spell!</h2>
+            <button id="generate-spell-btn">Generate Random Spell</button>
+            <p id="generated-spell"></p>
+        </div>
+
+        <!-- Interactive Houses Section -->
+        <div class="section">
+            <h2>Explore the Houses</h2>
+            <div class="house-crests">
+                <div class="house-crest gryffindor" data-house="Gryffindor">🦁</div>
+                <div class="house-crest hufflepuff" data-house="Hufflepuff">🦡</div>
+                <div class="house-crest ravenclaw" data-house="Ravenclaw">🦅</div>
+                <div class="house-crest slytherin" data-house="Slytherin">🐍</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- House Info Card (Hidden by default) -->
+    <div id="house-info-card">
+        <span class="house-info-close" id="house-info-close-btn">&times;</span>
+        <h3 id="info-card-title"></h3>
+        <p id="info-card-details"></p>
+    </div>
+
+    <script>
+        // --- Gate Logic ---
+        const correctGateAnswer = "hedwig"; // The answer to the trivia question
+        const gateInput = document.getElementById('gate-input');
+        const gateMessage = document.getElementById('gate-message');
+        const gateContainer = document.getElementById('gate-container');
+        const mainContent = document.getElementById('main-content');
+
+        const maxGateAttempts = 3;
+        const gateLockoutDuration = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+        // Local storage keys specific to this page for gate attempts
+        const gateAttemptsKey = 'goofersGateAttempts';
+        const gateLockoutTimeKey = 'goofersGateLockoutTime';
+
+        let gateAttempts = parseInt(localStorage.getItem(gateAttemptsKey) || '0');
+        let gateLockoutTime = parseInt(localStorage.getItem(gateLockoutTimeKey) || '0');
+
+        function updateGateMessage(msg, isError = false) {
+            gateMessage.textContent = msg;
+            gateMessage.style.color = isError ? '#ff6b6b' : 'white';
+        }
+
+        function checkGateLockout() {
+            const currentTime = new Date().getTime();
+            if (gateLockoutTime > currentTime) {
+                const timeLeft = Math.ceil((gateLockoutTime - currentTime) / 1000 / 60); // minutes
+                updateGateMessage(`Too many failed attempts. Try again in ${timeLeft} minutes.`, true);
+                gateInput.disabled = true;
+                return true;
+            } else {
+                // If lockout period is over, reset attempts
+                localStorage.removeItem(gateLockoutTimeKey);
+                gateAttempts = 0;
+                localStorage.setItem(gateAttemptsKey, gateAttempts);
+                gateInput.disabled = false;
+                updateGateMessage(''); // Clear message
+                return false;
+            }
+        }
+
+        function revealMainContent() {
+            gateContainer.style.opacity = '0';
+            gateContainer.style.pointerEvents = 'none'; // Disable interaction on gate
+
+            setTimeout(() => {
+                gateContainer.style.display = 'none'; // Hide gate completely after fade-out
+                mainContent.style.display = 'flex'; // Show main content
+                mainContent.style.opacity = '1';
+                mainContent.style.pointerEvents = 'all'; // Enable interaction on main content
+            }, 500); // Matches gate fade-out transition duration
+        }
+
+        function handleGateSubmit() {
+            if (checkGateLockout()) {
+                return; // Still locked out
+            }
+
+            const enteredAnswer = gateInput.value.toLowerCase().trim();
+
+            if (enteredAnswer === correctGateAnswer) {
+                localStorage.removeItem(gateAttemptsKey); // Clear attempts on success
+                localStorage.removeItem(gateLockoutTimeKey); // Clear lockout on success
+                revealMainContent();
+            } else {
+                gateAttempts++;
+                localStorage.setItem(gateAttemptsKey, gateAttempts);
+                updateGateMessage(`Incorrect. Attempts left: ${maxGateAttempts - gateAttempts}`, true);
+
+                if (gateAttempts >= maxGateAttempts) {
+                    gateLockoutTime = new Date().getTime() + gateLockoutDuration;
+                    localStorage.setItem(gateLockoutTimeKey, gateLockoutTime);
+                    checkGateLockout(); // Update message and disable input
+                }
+                gateInput.value = ''; // Clear input on incorrect answer
+            }
+        }
+
+        // Initial check on page load
+        if (checkGateLockout()) {
+            // Keep gate disabled
+        } else {
+            gateInput.focus(); // Focus input if not locked out
+        }
+
+        gateInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                handleGateSubmit();
+            }
+        });
+
+        // --- Main Content Logic ---
+
+        // Sorting Hat Quiz
+        const quizQuestion = document.getElementById('quiz-question');
+        const quizOptions = document.getElementById('quiz-options');
+        const sortingResult = document.getElementById('sorting-result');
+
+        const sortingQuestions = [
+            {
+                question: "Which quality do you value most?",
+                options: {
+                    "Bravery": "Gryffindor",
+                    "Loyalty": "Hufflepuff",
+                    "Wisdom": "Ravenclaw",
+                    "Ambition": "Slytherin"
+                }
+            },
+            {
+                question: "What would you rather find in the Forbidden Forest?",
+                options: {
+                    "A hidden treasure": "Slytherin",
+                    "An ancient, rare creature": "Ravenclaw",
+                    "A lost friend": "Hufflepuff",
+                    "A dangerous adventure": "Gryffindor"
+                }
+            },
+            {
+                question: "What is your preferred method of solving a problem?",
+                options: {
+                    "Charge in headfirst": "Gryffindor",
+                    "Think it through carefully": "Ravenclaw",
+                    "Gather allies and work together": "Hufflepuff",
+                    "Strategize and outwit opponents": "Slytherin"
+                }
+            }
+        ];
+        let currentQuestionIndex = 0;
+
+        function displayQuestion() {
+            if (currentQuestionIndex < sortingQuestions.length) {
+                const q = sortingQuestions[currentQuestionIndex];
+                quizQuestion.textContent = q.question;
+                quizOptions.innerHTML = ''; // Clear previous options
+                for (const [optionText, house] of Object.entries(q.options)) {
+                    const button = document.createElement('button');
+                    button.textContent = optionText;
+                    button.dataset.house = house; // Store the associated house
+                    button.addEventListener('click', selectAnswer);
+                    quizOptions.appendChild(button);
+                }
+            } else {
+                // Quiz finished, display final house or reset
+                quizQuestion.textContent = "Your house has been chosen!";
+                quizOptions.innerHTML = '<button id="restart-quiz">Sort Me Again!</button>';
+                document.getElementById('restart-quiz').addEventListener('click', () => {
+                    currentQuestionIndex = 0;
+                    sortingResult.textContent = '';
+                    displayQuestion();
+                });
+            }
+        }
+
+        function selectAnswer(event) {
+            const chosenHouse = event.target.dataset.house;
+            sortingResult.textContent = `You belong in... ${chosenHouse}!`;
+            currentQuestionIndex++;
+            setTimeout(displayQuestion, 2000); // Move to next question after 2 seconds
+        }
+
+        displayQuestion(); // Initialize the quiz
+
+        // Spell Generator
+        const generateSpellBtn = document.getElementById('generate-spell-btn');
+        const generatedSpellDisplay = document.getElementById('generated-spell');
+
+        const spells = [
+            "Expecto Patronum!", "Wingardium Leviosa!", "Expelliarmus!",
+            "Lumos!", "Nox!", "Alohomora!", "Avada Kedavra! (Just kidding!)",
+            "Accio!", "Stupefy!", "Rictusempra!", "Reducto!", "Protego!"
+        ];
+
+        generateSpellBtn.addEventListener('click', () => {
+            const randomIndex = Math.floor(Math.random() * spells.length);
+            generatedSpellDisplay.textContent = spells[randomIndex];
+        });
+
+        // --- Interactive Houses (New Logic) ---
+        const houseCrests = document.querySelectorAll('.house-crest');
+        const houseInfoCard = document.getElementById('house-info-card');
+        const infoCardTitle = document.getElementById('info-card-title');
+        const infoCardDetails = document.getElementById('info-card-details');
+        const houseInfoCloseBtn = document.getElementById('house-info-close-btn');
+
+        const houseDetails = {
+            Gryffindor: {
+                founder: "Godric Gryffindor",
+                commonRoom: "Gryffindor Tower (7th floor)",
+                animal: "Lion",
+                element: "Fire",
+                traits: "Bravery, Daring, Nerve, Chivalry. Known for courage and determination."
+            },
+            Hufflepuff: {
+                founder: "Helga Hufflepuff",
+                commonRoom: "Basement, near the kitchens",
+                animal: "Badger",
+                element: "Earth",
+                traits: "Dedication, Hard Work, Fair Play, Loyalty, Patience. Values justice and friendship."
+            },
+            Ravenclaw: {
+                founder: "Rowena Ravenclaw",
+                commonRoom: "Ravenclaw Tower (west side of Hogwarts)",
+                animal: "Eagle",
+                element: "Air",
+                traits: "Intelligence, Learning, Wisdom, Creativity, Originality. Values wit and knowledge."
+            },
+            Slytherin: {
+                founder: "Salazar Slytherin",
+                commonRoom: "Dungeons, under the Great Lake",
+                animal: "Serpent",
+                element: "Water",
+                traits: "Ambition, Cunning, Leadership, Resourcefulness, Self-Preservation. Often misunderstood."
+            }
+        };
+
+        let infoCardTimeout; // To store the timeout ID for auto-hiding
+
+        function showHouseInfo(houseName) {
+            clearTimeout(infoCardTimeout); // Clear any existing auto-hide timeout
+
+            const details = houseDetails[houseName];
+            if (details) {
+                infoCardTitle.textContent = houseName;
+                infoCardDetails.innerHTML = `
+                    <strong>Founder:</strong> ${details.founder}<br>
+                    <strong>Common Room:</strong> ${details.commonRoom}<br>
+                    <strong>Animal:</strong> ${details.animal}<br>
+                    <strong>Element:</strong> ${details.element}<br>
+                    <br>${details.traits}
+                `;
+                houseInfoCard.style.opacity = '1';
+                houseInfoCard.style.pointerEvents = 'all';
+                
+                // Set auto-hide timeout
+                infoCardTimeout = setTimeout(() => {
+                    hideHouseInfo();
+                }, 4000); // Hide after 4 seconds
+            }
+        }
+
+        function hideHouseInfo() {
+            clearTimeout(infoCardTimeout); // Clear timeout if hidden manually
+            houseInfoCard.style.opacity = '0';
+            houseInfoCard.style.pointerEvents = 'none';
+        }
+
+        houseCrests.forEach(crest => {
+            crest.addEventListener('click', () => {
+                const houseName = crest.dataset.house; // Get house name from data-house attribute
+                showHouseInfo(houseName);
+            });
+        });
+
+        houseInfoCloseBtn.addEventListener('click', hideHouseInfo); // Close button for the info card
+        houseInfoCard.addEventListener('click', hideHouseInfo); // Click anywhere on the card to close
+    </script>
+</body>
+</html>
