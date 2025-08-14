@@ -1,2 +1,1 @@
-# logangj.github.io
-LG J
+LGJ
