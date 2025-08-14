@@ -6,380 +6,260 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>logangj</title>
     <style>
-        /* Ensure html and body take full width and height, prevent scrollbars, and disable default touch actions */
         html, body {
             width: 100%;
             height: 100%;
             margin: 0;
             padding: 0;
             overflow: hidden;
-            touch-action: none; /* Prevents default touch actions like scrolling/zooming on the whole page */
+            touch-action: none;
         }
-
-        /* Center the SVG horizontally and vertically, set background and font */
         body {
             display: flex;
-            justify-content: center; /* Center horizontally */
-            align-items: center; /* Center vertically */
+            justify-content: center;
+            align-items: center;
             background-color: black;
-            font-family: "Inter", sans-serif; /* Using Inter font as per instructions */
+            font-family: "Inter", sans-serif;
         }
-
-        /* Style for the SVG container, making it responsive to fill available space */
         svg {
-            background-color: transparent; /* Ensure no background from SVG itself */
-            width: 100%; /* Make SVG responsive to fill its parent */
-            height: 100%; /* Make SVG responsive to fill its parent */
-            user-select: none; /* Prevent text selection */
-            /* Removed max-width, max-height, border-radius, box-shadow to remove the visible window */
+            background-color: transparent;
+            width: 100%;
+            height: 100%;
+            user-select: none;
         }
-
-        /* Styles for individual letter groups, enabling drag and adding transition for snap-back effect */
         .letter {
-            cursor: grab; /* Indicate draggable element */
-            transition: transform 0.5s ease-out; /* Ease-out for fast start, slow finish on snap-back */
-            pointer-events: all; /* Ensure the entire group is clickable/draggable */
+            cursor: grab;
+            transition: transform 0.5s ease-out;
+            pointer-events: all;
         }
-
-        /* Change cursor when actively dragging */
         .letter:active {
             cursor: grabbing;
         }
-
-        /* Smooth flip animation for the main logo container */
         #logo-container {
-            transition: transform 0.5s ease; /* Smooth flip animation */
+            transition: transform 0.5s ease;
         }
-
-        /* Limit selectable area of paths to their stroke for better interaction */
         path {
-            pointer-events: stroke; /* Limit selectable area to the white stroke */
+            pointer-events: stroke;
         }
-
-        /* Styles for the new input bar - white outline, black background for input, fade effect */
         #input-bar {
-            position: absolute; /* Positioned absolutely relative to the body */
-            z-index: 100; /* Ensure it's above other elements */
-            background-color: transparent; /* Transparent background for the bar itself */
-            border: 2px solid white; /* White outline */
-            padding: 5px 10px; /* Reduced padding to make the box smaller vertically and horizontally */
+            position: absolute;
+            z-index: 100;
+            background-color: transparent;
+            border: 2px solid white;
+            padding: 5px 10px;
             border-radius: 10px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-            display: none; /* Hidden by default, will be set to flex when visible */
+            display: none;
             flex-direction: row;
             align-items: center;
-            justify-content: center; /* Center the input within the bar */
-            box-sizing: border-box; /* Include padding and border in the element's total width and height */
-            width: 250px; /* Adjusted width for the bar */
-
-            opacity: 0; /* Start with 0 opacity for fade-in */
-            pointer-events: none; /* Disable interaction when hidden */
-            transition: opacity 0.3s ease-in-out; /* Smooth fade transition */
+            justify-content: center;
+            box-sizing: border-box;
+            width: 250px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease-in-out;
         }
-
         #keyword-input {
-            background-color: black; /* Black background for the input field */
-            color: white; /* White text color */
-            border: none; /* No individual border, outline comes from parent */
-            border-radius: 5px; /* Rounded corners for the input field */
+            background-color: black;
+            color: white;
+            border: none;
+            border-radius: 5px;
             font-size: 18px;
-            padding: 2px; /* Reduced padding for the input field itself */
-            width: 100%; /* Fill the width of its parent (#input-bar) */
-            outline: none; /* Remove default focus outline */
-            text-align: center; /* Center the text inside the input */
-            height: 24px; /* Explicit height to ensure consistent vertical size */
-            line-height: 24px; /* Match line-height to height for vertical centering of text */
+            padding: 2px;
+            width: 100%;
+            outline: none;
+            text-align: center;
+            height: 24px;
+            line-height: 24px;
+        }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
         }
     </style>
 </head>
 <body>
-    <!-- SVG container with a defined viewBox for its coordinate system -->
+    <canvas id="starfield"></canvas>
     <svg viewBox="-150 -280 750 750">
-        <!-- Main group to hold both letters, allowing for overall rotation -->
         <g id="logo-container">
-            <!-- J Shape group -->
             <g id="j-group" class="letter">
-                <!-- Path for the J shape, styled with white stroke and rounded joins -->
                 <path d="M 175 75 H 350 V 250 A 125 125 0 0 1 100 250" fill="none" stroke="white" stroke-width="75" stroke-linecap="butt" stroke-linejoin="round" />
             </g>
-            <!-- L Shape group -->
             <g id="l-group" class="letter">
-                <!-- Path for the L shape, styled with white stroke and rounded joins -->
                 <path d="M 105 -65 V 185 H 280" fill="none" stroke="white" stroke-width="75" stroke-linecap="butt" stroke-linejoin="round" />
             </g>
         </g>
     </svg>
-
-    <!-- New text input bar -->
     <div id="input-bar">
-        <input type="text" id="keyword-input"> <!-- Removed placeholder text -->
+        <input type="text" id="keyword-input">
     </div>
-
     <script>
-        // Get references to the root SVG element, the main container, and individual letter groups
-        const svg = document.querySelector('svg'); // Needed to create SVGPoint objects
+        const svg = document.querySelector('svg');
         const container = document.getElementById('logo-container');
         const letters = document.querySelectorAll('.letter');
         const inputBar = document.getElementById('input-bar');
         const keywordInput = document.getElementById('keyword-input');
+        let containerRotation = 0;
 
-        // Variable for tracking the rotation of the main container
-        let containerRotation = 0; // Tracks the rotation applied to the #logo-container
-
-        // Map of keywords to URLs
-        const keywordMap = {
-            "elisabeth": "https://logangj.com/skook",
-            "esther": "https://logangj.com/goofers",
-            "daniel": "https://logangj.com/bro",
-            "hannah": "https://logangj.com/boopsers",
-            "dean": "https://logangj.com/lightningmcdean",
-            "tanner": "https://logangj.com/tanner"
-        };
-
-        /**
-         * Helper function to get clientX and clientY from a mouse or touch event.
-         * For touch events, it prioritizes `touches[0]` for `touchstart`/`touchmove`
-         * and `changedTouches[0]` for `touchend`. For mouse events, it uses `evt` directly.
-         * @param {Event} evt - The mouse or touch event.
-         * @returns {{clientX: number, clientY: number}} Object with clientX and clientY.
-         */
         function getEventClientCoords(evt) {
             const source = evt.touches && evt.touches.length > 0 ? evt.touches[0] :
-                           (evt.changedTouches && evt.changedTouches.length > 0 ? evt.changedTouches[0] : evt);
+                          (evt.changedTouches && evt.changedTouches.length > 0 ? evt.changedTouches[0] : evt);
             return { clientX: source.clientX, clientY: source.clientY };
         }
 
-        /**
-         * Helper function to convert screen coordinates (clientX, clientY) to
-         * the local coordinate system of a given SVG element.
-         * @param {Event} evt - The mouse or touch event.
-         * @param {SVGElement} element - The SVG element whose local coordinates are desired.
-         * @returns {SVGPoint} An SVGPoint object with x and y coordinates in the element's local system.
-         */
         function getPointInElementCoords(evt, element) {
             const clientCoords = getEventClientCoords(evt);
-            const CTM = element.getScreenCTM(); // Get the transformation matrix from element's local space to screen space
-            let pt = svg.createSVGPoint(); // Create a new SVG point
+            const CTM = element.getScreenCTM();
+            let pt = svg.createSVGPoint();
             pt.x = clientCoords.clientX;
             pt.y = clientCoords.clientY;
-            // Transform the screen point by the inverse of the element's CTM
-            // This converts the screen point into the element's local coordinate system
             return pt.matrixTransform(CTM.inverse());
         }
 
-        /**
-         * Transforms a point from an element's local coordinate system to the SVG's root coordinate system.
-         * This is crucial for checking relative positions after transforms.
-         * @param {SVGElement} element - The SVG element (e.g., a letter group).
-         * @param {number} x - The x-coordinate in the element's local system.
-         * @param {number} y - The y-coordinate in the element's local system.
-         * @returns {SVGPoint} The transformed point in SVG root coordinates.
-         */
         function getTransformedPoint(element, x, y) {
             let pt = svg.createSVGPoint();
             pt.x = x;
             pt.y = y;
-
-            // getCTM() returns the transformation matrix from the element's local coordinate system
-            // to the SVG's root coordinate system, including all ancestor transforms.
             const transformMatrix = element.getCTM();
             return pt.matrixTransform(transformMatrix);
         }
 
-        /**
-         * Checks if any of the defined alignment conditions are met.
-         * If any set of conditions are met, navigates to google.com.
-         */
         function checkAlignment() {
             const jGroup = document.getElementById('j-group');
             const lGroup = document.getElementById('l-group');
-
-            const tolerance = 10; // Tolerance for alignment conditions in pixels
-
-            // Get the current rotation of each letter from its custom attribute
+            const tolerance = 10;
             const jRotation = parseFloat(jGroup.getAttribute('rotation') || 0);
             const lRotation = parseFloat(lGroup.getAttribute('rotation') || 0);
-
-            // Helper to check if a letter is upside down (rotated 180 degrees)
             const isUpsideDown = (rotation) => Math.abs((rotation % 360 + 360) % 360) === 180;
-
-
-            // --- "Lowercase f state" conditions ---
-            // Condition: Both letters are upside down
             const bothUpsideDown_f = isUpsideDown(jRotation) && isUpsideDown(lRotation);
-
-            // Condition 1 (lowercase f): Shorter straight side of J (top bar) and Shorter side of L (bottom bar) Y-alignment
-            // J's shorter straight side (top bar) starts at (175, 75). We'll use Y=75.
             const jShorterSideY_f = getTransformedPoint(jGroup, 175, 75).y;
-            // L's shorter side (bottom horizontal bar) is at Y=185. We'll use Y=185.
-            const lShorterSideY_f = getTransformedPoint(lGroup, 105, 185).y; // Using (105, 185) as a point on the horizontal segment
+            const lShorterSideY_f = getTransformedPoint(lGroup, 105, 185).y;
             const lowercaseF_condition1 = Math.abs(jShorterSideY_f - lShorterSideY_f) <= tolerance;
-
-            // Condition 2 (lowercase f): Long straight sides (vertical) of each letter X-alignment
-            // J's long straight side (vertical right bar) is at X=350. We'll use X=350.
-            const jLongSideX_f = getTransformedPoint(jGroup, 350, 75).x; // Using (350, 75) as a point on the vertical segment
-            // L's long straight side (vertical left bar) is at X=105. We'll use X=105.
-            const lLongSideX_f = getTransformedPoint(lGroup, 105, -65).x; // Using (105, -65) as a point on the vertical segment
+            const jLongSideX_f = getTransformedPoint(jGroup, 350, 75).x;
+            const lLongSideX_f = getTransformedPoint(lGroup, 105, -65).x;
             const lowercaseF_condition2 = Math.abs(jLongSideX_f - lLongSideX_f) <= tolerance;
-
             const isLowercaseFState = lowercaseF_condition1 && lowercaseF_condition2 && bothUpsideDown_f;
-
-
-            // --- "Dozenal 10 state" conditions (Revised based on user's latest instructions) ---
-            // Condition 1 (dozenal 10): Both letters are upside down (same as lowercase f)
             const bothUpsideDown_dozenal10 = isUpsideDown(jRotation) && isUpsideDown(lRotation);
-
-            // Condition 2 (dozenal 10): Same Y-alignment as lowercase f
-            const dozenal10_condition2_y_align = lowercaseF_condition1; // Re-use the Y-alignment check from lowercase f
-
-            // Condition 3 (dozenal 10): Vertical line of L X-aligned with the end of the J's curve
-            // L's long straight side (vertical left bar) is at X=105.
-            const lLongSideX_dozenal10 = getTransformedPoint(lGroup, 105, -65).x; // Using (105, -65) as a point on the vertical segment
-            // J's curve ends at (100, 250) in its local coordinate system (updated from 255 to 250).
+            const dozenal10_condition2_y_align = lowercaseF_condition1;
+            const lLongSideX_dozenal10 = getTransformedPoint(lGroup, 105, -65).x;
             const jCurveEndX_dozenal10 = getTransformedPoint(jGroup, 100, 250).x;
             const dozenal10_condition3_x_align = Math.abs(lLongSideX_dozenal10 - jCurveEndX_dozenal10) <= tolerance;
-
             const isDozenal10State = bothUpsideDown_dozenal10 && dozenal10_condition2_y_align && dozenal10_condition3_x_align;
-
-
-            // --- Check if either state is met ---
-            if (isLowercaseFState) {
-                console.log("Lowercase f state achieved! Navigating to Google.");
-                // Use a small timeout to allow the last visual update to render before navigation
+            if (isLowercaseFState || isDozenal10State) {
+                console.log("Alignment achieved! Navigating to Google.");
                 setTimeout(() => {
-                    // Open in a new tab to avoid "refuses to connect" error in iframe
-                    window.open('https://www.google.com', '_blank');
-                }, 50);
-            } else if (isDozenal10State) {
-                console.log("Dozenal 10 state achieved! Navigating to Google.");
-                // Use a small timeout to allow the last visual update to render before navigation
-                setTimeout(() => {
-                    // Open in a new tab to avoid "refuses to connect" error in iframe
                     window.open('https://www.google.com', '_blank');
                 }, 50);
             }
         }
 
-
-        // Iterate over each letter to add drag and click functionality
         letters.forEach(letter => {
-            let isDragging = false; // Flag to indicate if the letter is being dragged
-            let startClientX = 0, startClientY = 0; // Initial mouse/touch coordinates on down event (for click vs. drag detection)
-            let letterTranslateX = 0, letterTranslateY = 0; // Current translation of the letter (relative to its parent, #logo-container)
-            let dragOffsetX = 0, dragOffsetY = 0; // Offset from the letter's translated origin to the mouse/touch point, in parent's coords
-            let letterRotation = 0; // Current rotation of the individual letter (stored on custom attribute)
-            let movedDuringDrag = false; // New flag to track if actual movement occurred during drag
+            let isDragging = false;
+            let startClientX = 0, startClientY = 0;
+            let letterTranslateX = 0, letterTranslateY = 0;
+            let dragOffsetX = 0, dragOffsetY = 0;
+            let letterRotation = 0;
+            let movedDuringDrag = false;
 
-            // --- Mouse Events ---
             letter.addEventListener('mousedown', (e) => {
-                e.preventDefault(); // Prevent default browser drag behavior (e.g., image dragging)
-                isDragging = true;
-                startClientX = e.clientX;
-                startClientY = e.clientY; // Consistent naming
-                letter.style.transition = 'none'; // Disable transition while dragging for smooth movement
-                movedDuringDrag = false; // Reset flag on new drag/click
-
-                // Get the mouse click point in the coordinate system of the PARENT container (#logo-container)
-                const mouseClickInParentCoords = getPointInElementCoords(e, container);
-
-                // Extract current translation from the letter's transform attribute.
-                // These values are relative to the letter's parent (#logo-container).
-                let transformAttr = letter.getAttribute('transform') || '';
-                let translateMatch = transformAttr.match(/translate\((-?\d+\.?\d*),\s*(-?\d+\.?\d*)\)/);
-                letterTranslateX = translateMatch ? parseFloat(translateMatch[1]) : 0;
-                letterTranslateY = translateMatch ? parseFloat(translateMatch[2]) : 0;
-
-                // Calculate the offset from the letter's current translated position (relative to parent)
-                // to the mouse click point (also relative to parent).
-                // This offset will be maintained during the drag, ensuring the letter moves directly with the mouse.
-                dragOffsetX = mouseClickInParentCoords.x - letterTranslateX;
-                dragOffsetY = mouseClickInParentCoords.y - letterTranslateY;
-
-                // Get current rotation value from the custom 'rotation' attribute
-                letterRotation = parseFloat(letter.getAttribute('rotation') || 0);
+                e.preventDefault();
+                if (e.button === 0) { // Left-click
+                    isDragging = true;
+                    startClientX = e.clientX;
+                    startClientY = e.clientY;
+                    letter.style.transition = 'none';
+                    movedDuringDrag = false;
+                    const mouseClickInParentCoords = getPointInElementCoords(e, container);
+                    let transformAttr = letter.getAttribute('transform') || '';
+                    let translateMatch = transformAttr.match(/translate\((-?\d+\.?\d*),\s*(-?\d+\.?\d*)\)/);
+                    letterTranslateX = translateMatch ? parseFloat(translateMatch[1]) : 0;
+                    letterTranslateY = translateMatch ? parseFloat(translateMatch[2]) : 0;
+                    dragOffsetX = mouseClickInParentCoords.x - letterTranslateX;
+                    dragOffsetY = mouseClickInParentCoords.y - letterTranslateY;
+                    letterRotation = parseFloat(letter.getAttribute('rotation') || 0);
+                } else if (e.button === 2) { // Right-click
+                    letter.style.transition = 'transform 0.5s ease-out';
+                    if (!movedDuringDrag) {
+                        if (letter.id === 'l-group') {
+                            letterRotation -= 90; // Opposite direction (clockwise)
+                        } else if (letter.id === 'j-group') {
+                            letterRotation += 90; // Opposite direction (counterclockwise)
+                        }
+                        letter.setAttribute('rotation', letterRotation);
+                        letter.setAttribute('transform', `translate(${letterTranslateX}, ${letterTranslateY}) rotate(${letterRotation}, 225, 185)`);
+                        checkAlignment();
+                    }
+                }
             });
 
-            // --- Touch Events ---
             letter.addEventListener('touchstart', (e) => {
-                e.preventDefault(); // Prevent default touch behaviors (e.g., scrolling, zooming, tap highlights)
-                isDragging = true;
-                startClientX = e.touches[0].clientX;
-                startClientY = e.touches[0].clientY; // Consistent naming
-                letter.style.transition = 'none'; // Disable transition while dragging for smooth movement
-                movedDuringDrag = false; // Reset flag on new drag/click
-
-                // Get the touch start point in the coordinate system of the PARENT container (#logo-container)
-                const touchStartInParentCoords = getPointInElementCoords(e, container);
-
-                // Extract current translation from the letter's transform attribute.
-                let transformAttr = letter.getAttribute('transform') || '';
-                let translateMatch = transformAttr.match(/translate\((-?\d+\.?\d*),\s*(-?\d+\.?\d*)\)/);
-                letterTranslateX = translateMatch ? parseFloat(translateMatch[1]) : 0;
-                letterTranslateY = translateMatch ? parseFloat(translateMatch[2]) : 0;
-
-                // Calculate the offset from the letter's current translated position (relative to parent)
-                // to the touch start point (also relative to parent).
-                dragOffsetX = touchStartInParentCoords.x - letterTranslateX;
-                dragOffsetY = touchStartInParentCoords.y - letterTranslateY;
-
-                // Get current rotation value from the custom 'rotation' attribute
-                letterRotation = parseFloat(letter.getAttribute('rotation') || 0);
+                e.preventDefault();
+                if (e.touches.length === 1) { // Single touch for dragging
+                    isDragging = true;
+                    startClientX = e.touches[0].clientX;
+                    startClientY = e.touches[0].clientY;
+                    letter.style.transition = 'none';
+                    movedDuringDrag = false;
+                    const touchStartInParentCoords = getPointInElementCoords(e, container);
+                    let transformAttr = letter.getAttribute('transform') || '';
+                    let translateMatch = transformAttr.match(/translate\((-?\d+\.?\d*),\s*(-?\d+\.?\d*)\)/);
+                    letterTranslateX = translateMatch ? parseFloat(translateMatch[1]) : 0;
+                    letterTranslateY = translateMatch ? parseFloat(translateMatch[2]) : 0;
+                    dragOffsetX = touchStartInParentCoords.x - letterTranslateX;
+                    dragOffsetY = touchStartInParentCoords.y - letterTranslateY;
+                    letterRotation = parseFloat(letter.getAttribute('rotation') || 0);
+                } else if (e.touches.length === 2) { // Two-finger tap for reverse rotation
+                    letter.style.transition = 'transform 0.5s ease-out';
+                    if (!movedDuringDrag) {
+                        if (letter.id === 'l-group') {
+                            letterRotation -= 90; // Opposite direction (clockwise)
+                        } else if (letter.id === 'j-group') {
+                            letterRotation += 90; // Opposite direction (counterclockwise)
+                        }
+                        letter.setAttribute('rotation', letterRotation);
+                        letter.setAttribute('transform', `translate(${letterTranslateX}, ${letterTranslateY}) rotate(${letterRotation}, 225, 185)`);
+                        checkAlignment();
+                    }
+                }
             });
 
-            // --- Common Move Event Handler (for both mouse and touch) ---
             const handleMove = (e) => {
                 if (isDragging) {
-                    e.preventDefault(); // Crucial to prevent scrolling/zooming during drag
-
+                    e.preventDefault();
                     const currentClientCoords = getEventClientCoords(e);
                     const currentDx = currentClientCoords.clientX - startClientX;
                     const currentDy = currentClientCoords.clientY - startClientY;
-
-                    // If movement exceeds a very small threshold, mark as moved
-                    // This threshold helps distinguish accidental micro-movements from intentional drags
                     if (Math.abs(currentDx) > 0.5 || Math.abs(currentDy) > 0.5) {
                         movedDuringDrag = true;
                     }
-
-                    // Get the current pointer (mouse or touch) position in the PARENT container's coordinates
                     const currentPointerInParentCoords = getPointInElementCoords(e, container);
-
-                    // Calculate the new translation for the letter's origin.
-                    // This is the current pointer position in the parent's coordinates minus the initial drag offset.
                     const newX = currentPointerInParentCoords.x - dragOffsetX;
                     const newY = currentPointerInParentCoords.y - dragOffsetY;
-
-                    // Update the letter's current translation for the next move event
                     letterTranslateX = newX;
                     letterTranslateY = newY;
-
-                    // Apply the new translate and the existing rotation.
-                    // The rotation origin (225, 185) is fixed relative to the SVG viewBox for individual letter flips.
                     letter.setAttribute('transform', `translate(${newX}, ${newY}) rotate(${letterRotation}, 225, 185)`);
                 }
             };
             document.addEventListener('mousemove', handleMove);
-            document.addEventListener('touchmove', handleMove, { passive: false }); // {passive: false} to allow preventDefault
+            document.addEventListener('touchmove', handleMove, { passive: false });
 
-            // --- Common Up Event Handler (for both mouse and touch) ---
             const handleUp = (e) => {
                 if (isDragging) {
                     isDragging = false;
-                    letter.style.transition = 'transform 0.5s ease-out'; // Re-enable transition for snap-back
-
-                    // Only flip if no significant movement occurred during the drag
+                    letter.style.transition = 'transform 0.5s ease-out';
                     if (!movedDuringDrag) {
                         if (letter.id === 'l-group') {
-                            letterRotation += 90; // Counterclockwise for L
+                            letterRotation += 90; // Normal direction (counterclockwise)
                         } else if (letter.id === 'j-group') {
-                            letterRotation -= 90; // Clockwise for J
+                            letterRotation -= 90; // Normal direction (clockwise)
                         }
-                        letter.setAttribute('rotation', letterRotation); // Store the new rotation on the custom attribute
-
-                        // Reapply the transform with the current translation and the new rotation
+                        letter.setAttribute('rotation', letterRotation);
                         letter.setAttribute('transform', `translate(${letterTranslateX}, ${letterTranslateY}) rotate(${letterRotation}, 225, 185)`);
                     }
-                    // Always check alignment after a letter interaction
                     checkAlignment();
                 }
             };
@@ -387,69 +267,94 @@
             document.addEventListener('touchend', handleUp);
         });
 
-        // --- Background Click/Tap Logic for Input Bar and Reset ---
-        let backgroundClickTimeout = null;
-        let backgroundClickCount = 0; // Unified counter for mouse and touch background clicks/taps
-        let isWaitingForDoubleClick = false; // Flag to manage single click vs double click
+        document.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+        });
 
-        // Function to show the input bar with fade-in effect
+        let lastLeftClickTime = 0;
+        let lastRightClickTime = 0;
+        let clickTimeout = null;
+        let touchCount = 0;
+        let backgroundClickTimeout = null;
+        let isWaitingForDoubleClick = false;
+
         function showInputBar() {
-            const svgRect = svg.getBoundingClientRect(); // Get SVG's position and size
+            const svgRect = svg.getBoundingClientRect();
             inputBar.style.left = (svgRect.left + svgRect.width / 2) + 'px';
             inputBar.style.top = (svgRect.top + 20) + 'px';
-            inputBar.style.transform = 'translateX(-50%)'; // Keep this for horizontal centering
-
+            inputBar.style.transform = 'translateX(-50%)';
             inputBar.style.display = 'flex';
-            // Use a small timeout to ensure display:flex is applied before transition starts
             setTimeout(() => {
                 inputBar.style.opacity = '1';
                 inputBar.style.pointerEvents = 'all';
                 keywordInput.focus();
-            }, 10); // Small delay to allow display property to take effect
+            }, 10);
         }
 
-        // Function to hide the input bar with fade-out effect
         function hideInputBar() {
             inputBar.style.opacity = '0';
             inputBar.style.pointerEvents = 'none';
-            // Hide display after transition completes
             setTimeout(() => {
                 inputBar.style.display = 'none';
-                keywordInput.value = ''; // Clear input when hidden
-            }, 300); // Match CSS transition duration
+                keywordInput.value = '';
+            }, 300);
         }
 
-        // Event listener for window resize to reposition the input bar if visible
         window.addEventListener('resize', () => {
-            if (inputBar.style.opacity === '1') { // Only reposition if currently visible
-                showInputBar(); // Re-calculate position based on new SVG dimensions
+            if (inputBar.style.opacity === '1') {
+                showInputBar();
             }
         });
 
+        document.body.addEventListener('mousedown', (e) => {
+            if (!e.target.closest('.letter') && !e.target.closest('#input-bar')) {
+                const currentTime = Date.now();
+                if (e.button === 0) lastLeftClickTime = currentTime;
+                if (e.button === 2) lastRightClickTime = currentTime;
+                if (Math.abs(lastLeftClickTime - lastRightClickTime) <= 300) {
+                    clearTimeout(clickTimeout);
+                    if (inputBar.style.opacity === '0') {
+                        showInputBar();
+                    } else {
+                        hideInputBar();
+                    }
+                    lastLeftClickTime = 0;
+                    lastRightClickTime = 0;
+                } else {
+                    clickTimeout = setTimeout(() => {
+                        lastLeftClickTime = 0;
+                        lastRightClickTime = 0;
+                    }, 300);
+                }
+            }
+        });
+
+        document.body.addEventListener('touchstart', (e) => {
+            if (!e.target.closest('.letter') && !e.target.closest('#input-bar')) {
+                e.preventDefault();
+                if (e.touches.length === 2) {
+                    if (inputBar.style.opacity === '0') {
+                        showInputBar();
+                    } else {
+                        hideInputBar();
+                    }
+                }
+            }
+        });
 
         document.body.addEventListener('click', (e) => {
-            // Check if the click is on the background (not on a letter or the input bar)
-            if (!e.target.closest('.letter') && !e.target.closest('#input-bar')) {
-                backgroundClickCount++;
-                if (backgroundClickCount === 1) {
-                    // This is the first click. Start a timer to see if a second click follows.
+            if (!e.target.closest('.letter') && !e.target.closest('#input-bar') && e.button === 0) {
+                e.preventDefault();
+                touchCount++;
+                if (touchCount === 1) {
                     isWaitingForDoubleClick = true;
                     backgroundClickTimeout = setTimeout(() => {
-                        if (backgroundClickCount === 1) { // It was a single click
-                            if (inputBar.style.opacity === '0') { // If hidden, show it
-                                showInputBar();
-                            } else { // If visible, hide it
-                                hideInputBar();
-                            }
-                        }
-                        backgroundClickCount = 0; // Reset count
-                        isWaitingForDoubleClick = false; // Reset flag
-                    }, 300); // Timeout for double click detection
-                } else if (backgroundClickCount === 2) {
-                    // This is a double click. Clear the single click timer.
+                        touchCount = 0;
+                        isWaitingForDoubleClick = false;
+                    }, 300);
+                } else if (touchCount === 2) {
                     clearTimeout(backgroundClickTimeout);
-                    isWaitingForDoubleClick = false; // Not waiting anymore
-                    // Perform double-click reset action
+                    isWaitingForDoubleClick = false;
                     letters.forEach(letter => {
                         letter.style.transition = 'transform 0.5s ease-out';
                         letter.setAttribute('transform', '');
@@ -458,36 +363,26 @@
                     container.style.transition = 'transform 0.5s ease-out';
                     container.setAttribute('transform', '');
                     containerRotation = 0;
-                    hideInputBar(); // Hide input bar on reset
-                    backgroundClickCount = 0; // Reset count
-                    checkAlignment(); // Check alignment after reset
+                    hideInputBar();
+                    touchCount = 0;
+                    checkAlignment();
                 }
             }
         });
 
         document.body.addEventListener('touchend', (e) => {
-            // Similar logic for touch events
             if (!e.target.closest('.letter') && !e.target.closest('#input-bar')) {
-                e.preventDefault(); // Prevent default browser behavior like zooming on double tap
-
-                backgroundClickCount++;
-                if (backgroundClickCount === 1) {
+                e.preventDefault();
+                touchCount++;
+                if (touchCount === 1) {
                     isWaitingForDoubleClick = true;
                     backgroundClickTimeout = setTimeout(() => {
-                        if (backgroundClickCount === 1) { // It was a single tap
-                            if (inputBar.style.opacity === '0') { // If hidden, show it
-                                showInputBar();
-                            } else { // If visible, hide it
-                                hideInputBar();
-                            }
-                        }
-                        backgroundClickCount = 0; // Reset count
-                        isWaitingForDoubleClick = false; // Reset flag
-                    }, 300); // Timeout for double tap detection
-                } else if (backgroundClickCount === 2) {
+                        touchCount = 0;
+                        isWaitingForDoubleClick = false;
+                    }, 300);
+                } else if (touchCount === 2) {
                     clearTimeout(backgroundClickTimeout);
                     isWaitingForDoubleClick = false;
-                    // Perform double-tap reset action
                     letters.forEach(letter => {
                         letter.style.transition = 'transform 0.5s ease-out';
                         letter.setAttribute('transform', '');
@@ -496,49 +391,150 @@
                     container.style.transition = 'transform 0.5s ease-out';
                     container.setAttribute('transform', '');
                     containerRotation = 0;
-                    hideInputBar(); // Hide input bar on reset
-                    backgroundClickCount = 0; // Reset count
-                    checkAlignment(); // Check alignment after reset
+                    hideInputBar();
+                    touchCount = 0;
+                    checkAlignment();
                 }
             }
         });
 
-        // --- Keyword Input Logic ---
         function processKeyword() {
-            const enteredWord = keywordInput.value.toLowerCase().trim(); // Get value, convert to lowercase, trim whitespace
-            const targetUrl = keywordMap[enteredWord]; // Look up in the map
-
-            if (targetUrl) {
-                console.log(`Keyword "${enteredWord}" matched! Navigating to: ${targetUrl}`);
-                window.open(targetUrl, '_blank'); // Open URL in a new tab
-                hideInputBar(); // Hide the input bar after successful navigation
+            const enteredWord = keywordInput.value.toLowerCase().trim();
+            if (enteredWord) {
+                const targetUrl = `https://logangj.com/${encodeURIComponent(enteredWord)}`;
+                console.log(`Navigating to: ${targetUrl}`);
+                window.open(targetUrl, '_blank');
+                hideInputBar();
             } else {
-                console.log(`Keyword "${enteredWord}" not found.`);
-                // Optionally, you could add a visual cue here, like a temporary message "Invalid word"
-                keywordInput.value = ''; // Clear the input field even if not found
+                console.log("No input provided.");
+                keywordInput.value = '';
             }
         }
 
         keywordInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 processKeyword();
-            } else if (e.key === 'Escape') { // Allow hiding with Escape key
+            } else if (e.key === 'Escape') {
                 hideInputBar();
             }
         });
 
-        // Prevent single click on background from being registered when clicking inside the input bar
         inputBar.addEventListener('click', (e) => e.stopPropagation());
         inputBar.addEventListener('touchend', (e) => e.stopPropagation());
 
-        // Handle clicks outside the input bar to hide it, but only if it's already visible
         document.addEventListener('click', (e) => {
-            // If the input bar is visible AND the click is not inside the input bar AND not on a letter
-            // AND we are not currently waiting for a double click (to prevent hiding immediately after showing)
             if (inputBar.style.opacity === '1' && !inputBar.contains(e.target) && !e.target.closest('.letter') && !isWaitingForDoubleClick) {
                 hideInputBar();
             }
         });
+
+        const canvas = document.getElementById('starfield');
+        const ctx = canvas.getContext('2d');
+        let stars = [];
+        let shootingStars = [];
+        let lastShootingStarTime = 0;
+        let shootingStarInterval = randomInterval();
+
+        function randomInterval() {
+            return Math.random() * 5000 + 5000;
+        }
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            stars = [];
+            for (let i = 0; i < 100; i++) {
+                stars.push(new Star());
+            }
+        }
+
+        class Star {
+            constructor() {
+                this.reset();
+            }
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 0.35 + 0.35;
+                this.angle = Math.atan2(this.y - canvas.height / 2, this.x - canvas.width / 2);
+                this.speed = 0.12;
+                this.acceleration = 1.005;
+                this.opacity = 0;
+                this.fadeRate = 0.03;
+            }
+            update() {
+                this.speed *= this.acceleration;
+                this.x += Math.cos(this.angle) * this.speed;
+                this.y += Math.sin(this.angle) * this.speed;
+                if (this.opacity < 1) this.opacity += this.fadeRate;
+                if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) this.reset();
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
+                ctx.fill();
+            }
+        }
+
+        class ShootingStar {
+            constructor() {
+                this.reset();
+            }
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.angle = Math.random() * Math.PI * 2;
+                this.speed = Math.random() * 15 + 20;
+                this.length = Math.random() * 150 + 150;
+                this.opacity = 1;
+                this.size = 0.7;
+                this.fadeRate = 0.03;
+            }
+            update() {
+                this.x += Math.cos(this.angle) * this.speed;
+                this.y += Math.sin(this.angle) * this.speed;
+                this.opacity -= this.fadeRate;
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y);
+                ctx.lineTo(this.x - Math.cos(this.angle) * this.length, this.y - Math.sin(this.angle) * this.length);
+                ctx.strokeStyle = `rgba(255, 255, 255, ${this.opacity})`;
+                ctx.lineWidth = this.size;
+                ctx.stroke();
+            }
+        }
+
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        for (let i = 0; i < 100; i++) {
+            stars.push(new Star());
+        }
+
+        function animate(timestamp) {
+            ctx.fillStyle = 'black';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            stars.forEach(star => {
+                star.update();
+                star.draw();
+            });
+            shootingStars.forEach((star, index) => {
+                star.update();
+                star.draw();
+                if (star.opacity <= 0) {
+                    shootingStars.splice(index, 1);
+                    lastShootingStarTime = timestamp;
+                    shootingStarInterval = randomInterval();
+                }
+            });
+            if (!shootingStars.length && timestamp - lastShootingStarTime > shootingStarInterval) {
+                shootingStars.push(new ShootingStar());
+            }
+            requestAnimationFrame(animate);
+        }
+        animate(0);
     </script>
 </body>
 </html>
